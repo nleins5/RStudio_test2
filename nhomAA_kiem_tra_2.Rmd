@@ -16,73 +16,73 @@ library(tidyr)
 
 ### 1. Khởi tạo và Làm sạch dữ liệu
 
-Sinh ngẫu nhiên mẫu 5000 quan sát từ phân phối chuẩn N(60, 15^2) rồi tự thêm lỗi NA với số âm vào.
+Sinh mẫu ngẫu nhiên 5000 quan sát từ phân phối chuẩn N(60, 15^2) rồi chèn lỗi NA với số âm vào.
 
 ```{r}
 set.seed(123)
-raw_time <- rnorm(5000, mean = 60, sd = 15)
+t_raw <- rnorm(5000, mean = 60, sd = 15)
 
 # Chen 150 vi tri NA
-na_idx <- sample(1:5000, 150)
-raw_time[na_idx] <- NA
+na_pos <- sample(1:5000, 150)
+t_raw[na_pos] <- NA
 
-# Lay cac vi tri con lai de chen 50 so am
-con_lai <- which(!is.na(raw_time))
-neg_idx <- sample(con_lai, 50)
-raw_time[neg_idx] <- runif(50, -15, -1)
+# Chen 50 so am vao cac vi tri con lai
+safe_pos <- which(!is.na(t_raw))
+neg_pos <- sample(safe_pos, 50)
+t_raw[neg_pos] <- runif(50, -15, -1)
 
-# Loc bo NA va cac so < 0
-cleaned_time <- raw_time[!is.na(raw_time) & raw_time >= 0]
-final_data <- tibble(Time = cleaned_time)
-final_data
+# Loc bo NA va cac so am
+t_clean <- t_raw[!is.na(t_raw) & t_raw >= 0]
+df1 <- tibble(Time = t_clean)
+df1
 ```
 
-Số quan sát ban đầu là `r length(raw_time)`. Sau khi lọc bỏ 150 NA và 50 số âm thì còn lại `r nrow(final_data)` dòng.
+Số quan sát ban đầu là `r length(t_raw)`. Sau khi lọc bỏ 150 NA và 50 số âm thì còn lại `r nrow(df1)` dòng.
 
 ### 2. Khám phá phân phối
 
 Tính trung bình và độ lệch chuẩn của dữ liệu sạch:
 
 ```{r}
-X_bar <- mean(final_data$Time)
-S_val <- sd(final_data$Time)
-X_bar
-S_val
+mean_t <- mean(df1$Time)
+sd_t <- sd(df1$Time)
+mean_t
+sd_t
 ```
 
-Vẽ đồ thị Histogram và đè đường mật độ phân phối chuẩn N(X_bar, S_val^2) lên:
+Vẽ Histogram và chèn đường mật độ chuẩn N(mean_t, sd_t^2) lên:
 
 ```{r}
-ggplot(final_data, aes(x = Time)) +
+ggplot(df1, aes(x = Time)) +
   geom_histogram(aes(y = after_stat(density)), fill = "lightgray", color = "white", bins = 45) +
-  geom_function(fun = dnorm, args = list(mean = X_bar, sd = S_val), color = "darkblue", linewidth = 1) +
+  geom_function(fun = dnorm, args = list(mean = mean_t, sd = sd_t), color = "darkblue", linewidth = 1) +
   labs(title = "Phân phối Thời gian hoàn thành bài thi",
        x = "Thời gian (phút)",
-       y = "Mật độ (Density)") +
+       y = "Mật độ") +
   theme_minimal()
 ```
 
-Đường mật độ chuẩn màu xanh khớp khá tốt với biểu đồ cột.
+Đường mật độ chuẩn màu xanh khớp khá tốt với histogram.
 
-### 3. Tính xác suất sinh viên hoàn thành bài thi dưới 45 phút
+### 3. Tính xác suất sinh viên hoàn thành dưới 45 phút
 
 ```{r}
-prob_early <- pnorm(45, mean = X_bar, sd = S_val)
-prob_early
+prob <- pnorm(45, mean = mean_t, sd = sd_t)
+prob
 ```
 
-Xác suất sinh viên hoàn thành dưới 45 phút là tầm `r round(prob_early * 100, 2)`%.
+Xác suất sinh viên làm xong dưới 45 phút là tầm `r round(prob * 100, 2)`%.
 
 ### 4. Tìm mốc thời gian của top 5% nhanh nhất
 
-Top 5% làm nhanh nhất tương ứng với phân vị 0.05 ở phía đuôi trái:
+Top 5% nhanh nhất ứng với phân vị 0.05 ở phía đuôi bên trái:
 
 ```{r}
-reward_cutoff <- qnorm(0.05, mean = X_bar, sd = S_val)
-reward_cutoff
+cutoff <- qnorm(0.05, mean = mean_t, sd = sd_t)
+cutoff
 ```
 
-Mốc thời gian để được nhận thưởng là dưới `r round(reward_cutoff, 2)` phút.
+Mốc thời gian để được nhận thưởng là dưới `r round(cutoff, 2)` phút.
 
 ---
 
@@ -91,29 +91,29 @@ Mốc thời gian để được nhận thưởng là dưới `r round(reward_cu
 ### 1. Viết hàm mô phỏng
 
 ```{r}
-simulate_clt_exp <- function(n, lambda, R = 5000) {
-  sample_means <- numeric(R)
+clt <- function(n, lambda, R = 5000) {
+  means_vector <- numeric(R)
   for (i in 1:R) {
-    sample_means[i] <- mean(rexp(n, rate = lambda))
+    means_vector[i] <- mean(rexp(n, rate = lambda))
   }
-  return(sample_means)
+  return(means_vector)
 }
 ```
 
 ### 2. Kiểm chứng hội tụ
 
-Mô phỏng với cỡ mẫu n = 40 và lambda = 0.2. Kỳ vọng lý thuyết là 5, phương sai lý thuyết là 0.625 (độ lệch chuẩn là sqrt(0.625)).
+Mô phỏng trung bình mẫu của phân phối mũ với n = 40, lambda = 0.2. Kỳ vọng lý thuyết là 5, phương sai lý thuyết là 0.625 (độ lệch chuẩn là căn của 0.625).
 
 ```{r}
-sim_means <- simulate_clt_exp(n = 40, lambda = 0.2, R = 5000)
-df_clt <- tibble(Mean_Values = sim_means)
+means <- clt(n = 40, lambda = 0.2, R = 5000)
+df_clt <- tibble(Mean_Values = means)
 
-mu_theoretical <- 1 / 0.2
-sd_theoretical <- sqrt(1 / (40 * 0.2^2))
+mu_lt <- 1 / 0.2
+sd_lt <- sqrt(1 / (40 * 0.2^2))
 
 ggplot(df_clt, aes(x = Mean_Values)) +
   geom_histogram(aes(y = after_stat(density)), fill = "skyblue", color = "white", bins = 40) +
-  geom_function(fun = dnorm, args = list(mean = mu_theoretical, sd = sd_theoretical), 
+  geom_function(fun = dnorm, args = list(mean = mu_lt, sd = sd_lt), 
                 color = "darkred", linewidth = 1) +
   labs(title = "Kiểm chứng CLT trên mẫu phân phối Mũ (n = 40)",
        x = "Giá trị trung bình mẫu",
@@ -121,37 +121,37 @@ ggplot(df_clt, aes(x = Mean_Values)) +
   theme_minimal()
 ```
 
-Đồ thị histogram của các trung bình mẫu xấp xỉ rất tốt phân phối chuẩn.
+Histogram xấp xỉ rất tốt đường cong chuẩn lý thuyết.
 
 ### 3. Khoảng tin cậy mẫu cho Phương sai
 
-Lấy 1 mẫu ngẫu nhiên n = 30 từ phân phối mũ:
+Rút 1 mẫu ngẫu nhiên n = 30 từ phân phối mũ:
 
 ```{r}
 set.seed(789)
-sample_30 <- rexp(30, rate = 0.2)
-n_obs <- length(sample_30)
-S2_obs <- var(sample_30)
+mau_exp <- rexp(30, rate = 0.2)
+n_s <- length(mau_exp)
+s2 <- var(mau_exp)
 
-# Tim cac gia tri toi han Chi-square
-chi_lower <- qchisq(0.975, df = n_obs - 1)
-chi_upper <- qchisq(0.025, df = n_obs - 1)
+# Tra gia tri toi han Chi-square
+chi1 <- qchisq(0.975, df = n_s - 1)
+chi2 <- qchisq(0.025, df = n_s - 1)
 
-ci_var_lower <- ((n_obs - 1) * S2_obs) / chi_lower
-ci_var_upper <- ((n_obs - 1) * S2_obs) / chi_upper
+ci_low <- ((n_s - 1) * s2) / chi1
+ci_up <- ((n_s - 1) * s2) / chi2
 
-report_df <- tibble(Lower_Limit = ci_var_lower, Upper_Limit = ci_var_upper)
-report_df
+ktc_df <- tibble(Lower = ci_low, Upper = ci_up)
+ktc_df
 ```
 
 ### 4. Vẽ đồ thị khoảng tin cậy
 
 ```{r}
 ggplot() +
-  geom_segment(aes(x = ci_var_lower, y = 1, xend = ci_var_upper, yend = 1), color = "darkblue", linewidth = 1.5) +
-  geom_point(aes(x = c(ci_var_lower, ci_var_upper), y = c(1, 1)), color = "red", size = 3) +
+  geom_segment(aes(x = ci_low, y = 1, xend = ci_up, yend = 1), color = "darkblue", linewidth = 1.5) +
+  geom_point(aes(x = c(ci_low, ci_up), y = c(1, 1)), color = "red", size = 3) +
   geom_vline(xintercept = 1 / (0.2^2), linetype = "dashed", color = "darkgreen") +
-  xlim(ci_var_lower - 5, ci_var_upper + 5) +
+  xlim(ci_low - 5, ci_up + 5) +
   ylim(0, 2) +
   labs(title = "Khoảng tin cậy 95% của Phương sai",
        x = "Phương sai",
@@ -162,7 +162,7 @@ ggplot() +
         panel.grid.minor = element_blank())
 ```
 
-Phương sai thực tế của tổng thể (25) nằm trong khoảng tin cậy 95% tìm được.
+Phương sai thực tế (25) nằm gọn trong khoảng tin cậy ước lượng.
 
 ---
 
@@ -174,53 +174,53 @@ Tạo 3000 quan sát từ phân phối Beta(2, 5).
 
 ```{r}
 set.seed(2026)
-final_data <- tibble(ram_usage = rbeta(3000, shape1 = 2, shape2 = 5))
-final_data
+df3 <- tibble(ram = rbeta(3000, shape1 = 2, shape2 = 5))
+df3
 ```
 
 ### 2. Ước lượng Mô-men (MoM)
 
 ```{r}
-X_bar_ram <- mean(final_data$ram_usage)
-S2_ram <- var(final_data$ram_usage)
+mean_ram <- mean(df3$ram)
+var_ram <- var(df3$ram)
 
-mom_factor <- (X_bar_ram * (1 - X_bar_ram) / S2_ram) - 1
-alpha_mom <- X_bar_ram * mom_factor
-beta_mom <- (1 - X_bar_ram) * mom_factor
+k_mom <- (mean_ram * (1 - mean_ram) / var_ram) - 1
+a_mom <- mean_ram * k_mom
+b_mom <- (1 - mean_ram) * k_mom
 
-alpha_mom
-beta_mom
+a_mom
+b_mom
 ```
 
 ### 3. Ước lượng Hợp lý Cực đại (MLE)
 
-Xây dựng hàm trừ log-likelihood rồi dùng `nlminb` tối ưu:
+Hàm trừ log-likelihood cho phân phối Beta:
 
 ```{r}
-nll_beta <- function(params, data) {
-  alpha <- params[1]
-  beta <- params[2]
-  return(-sum(dbeta(data, shape1 = alpha, shape2 = beta, log = TRUE)))
+nll_func <- function(theta, data) {
+  a <- theta[1]
+  b <- theta[2]
+  return(-sum(dbeta(data, shape1 = a, shape2 = b, log = TRUE)))
 }
 
-mle_fit <- nlminb(start = c(alpha_mom, beta_mom), objective = nll_beta,
-                  data = final_data$ram_usage, lower = c(1e-5, 1e-5))
+fit <- nlminb(start = c(a_mom, b_mom), objective = nll_func,
+              data = df3$ram, lower = c(1e-5, 1e-5))
 
-alpha_mle <- mle_fit$par[1]
-beta_mle <- mle_fit$par[2]
+a_mle <- fit$par[1]
+b_mle <- fit$par[2]
 
-alpha_mle
-beta_mle
+a_mle
+b_mle
 ```
 
 ### 4. So sánh kết quả ước lượng MoM và MLE
 
 ```{r}
-ggplot(final_data, aes(x = ram_usage)) +
+ggplot(df3, aes(x = ram)) +
   geom_histogram(aes(y = after_stat(density)), fill = "cornsilk", color = "white", bins = 35) +
-  geom_function(fun = dbeta, args = list(shape1 = alpha_mom, shape2 = beta_mom), 
+  geom_function(fun = dbeta, args = list(shape1 = a_mom, shape2 = b_mom), 
                 aes(color = "MoM"), linewidth = 1) +
-  geom_function(fun = dbeta, args = list(shape1 = alpha_mle, shape2 = beta_mle), 
+  geom_function(fun = dbeta, args = list(shape1 = a_mle, shape2 = b_mle), 
                 aes(color = "MLE"), linetype = "dashed", linewidth = 1) +
   scale_color_manual(values = c("MoM" = "darkgreen", "MLE" = "red")) +
   labs(title = "So sánh MoM và MLE trên phân phối Beta",
@@ -231,26 +231,24 @@ ggplot(final_data, aes(x = ram_usage)) +
   theme(legend.position = "top")
 ```
 
-Hai đường mật độ của MoM và MLE gần như đè khít lên nhau, chứng tỏ cả hai phương pháp đều ước lượng rất tốt.
+Hai đường mật độ của MoM và MLE gần như đè khít lên nhau.
 
 ### 5. Khoảng tin cậy phi tham số cho Trung vị
 
-Sử dụng phân phối nhị thức tìm vị trí các thống kê thứ tự để xác định khoảng tin cậy 99% cho trung vị:
-
 ```{r}
-n_ram <- length(final_data$ram_usage)
-alpha_ci <- 0.01
+n_r <- length(df3$ram)
+alpha <- 0.01
 
-m1 <- qbinom(alpha_ci / 2, size = n_ram, prob = 0.5)
-m2 <- qbinom(1 - alpha_ci / 2, size = n_ram, prob = 0.5)
+idx1 <- qbinom(alpha / 2, size = n_r, prob = 0.5)
+idx2 <- qbinom(1 - alpha / 2, size = n_r, prob = 0.5)
 
-sorted_ram <- sort(final_data$ram_usage)
-ci_median_lower <- sorted_ram[m1]
-ci_median_upper <- sorted_ram[m2 + 1]
+sorted_ram <- sort(df3$ram)
+med_low <- sorted_ram[idx1]
+med_up <- sorted_ram[idx2 + 1]
 
-ci_median_lower
-ci_median_upper
-median(final_data$ram_usage)
+med_low
+med_up
+median(df3$ram)
 ```
 
-Trung vị thực tế của mẫu nằm trong khoảng tin cậy 99% tìm được.
+Trung vị mẫu rơi đúng vào khoảng tin cậy 99% tìm được.
