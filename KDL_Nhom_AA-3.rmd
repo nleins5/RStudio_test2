@@ -1,0 +1,226 @@
+---
+title: "Kiểm tra lần 2 - 24KDL 1"
+author: "Nhóm AA"
+date: "2026-06-04"
+output: 
+  html_document:
+    toc: true         
+    toc_float: true      
+    toc_depth: 3      
+---
+
+
+
+*Phân công nhiệm vụ Nhóm AA:*
+
+- *Bài tập Nhóm 1*: Phát, Phát
+- *Bài tập Nhóm 2*: Đức, Khang
+- *Bài tập Nhóm 3*: Lan Anh, Bảo
+- *Tổng hợp file*:Cả nhóm
+
+## Import thư viện
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+## Bài tập Nhóm 1: Tiền xử lý dữ liệu và Khám phá phân phối
+
+### 1. Khởi tạo và Làm sạch dữ liệu
+
+```{r}
+set.seed(123)
+raw_time <- rnorm(5000, mean = 60, sd = 15)
+
+na_indices <- sample(1:5000, 150)
+raw_time[na_indices] <- NA
+
+neg_indices <- sample(setdiff(1:5000, na_indices), 50)
+raw_time[neg_indices] <- runif(50, -15, -1)
+
+# Làm sạch dữ liệu
+cleaned_time <- raw_time[!is.na(raw_time) & raw_time >= 0]
+final_data <- tibble(Time = cleaned_time)
+final_data
+```
+
+### 2. Khám phá phân phối
+
+```{r}
+X_bar <- mean(final_data$Time)
+S_val <- sd(final_data$Time)
+
+ggplot(final_data, aes(x = Time)) +
+  geom_histogram(aes(y = after_stat(density)), fill = "lightgray", color = "white", bins = 45) +
+  geom_function(fun = dnorm, args = list(mean = X_bar, sd = S_val), color = "darkblue", linewidth = 1) +
+  labs(title = "Phân phối Thời gian hoàn thành bài thi",
+       x = "Thời gian (phút)",
+       y = "Mật độ (Density)") +
+  theme_minimal()
+```
+
+### 3. Ứng dụng hàm xác suất
+
+```{r}
+prob_early <- pnorm(45, mean = X_bar, sd = S_val)
+prob_early
+```
+
+### 4. Hàm phân vị (Quantile)
+
+```{r}
+reward_cutoff <- qnorm(0.05, mean = X_bar, sd = S_val)
+reward_cutoff
+```
+
+---
+
+## Bài tập Nhóm 2: Lập trình Mô phỏng và Hệ quả CLT
+
+### 1. Viết hàm tổng quát 
+
+```{r}
+simulate_clt_exp <- function(n, lambda, R = 5000) {
+  sample_means <- numeric(R)
+  for (i in 1:R) {
+    sample_means[i] <- mean(rexp(n, rate = lambda))
+  }
+  return(sample_means)
+}
+```
+
+### 2. Kiểm chứng hội tụ
+
+```{r}
+sim_means <- simulate_clt_exp(n = 40, lambda = 0.2, R = 5000)
+df_clt <- tibble(Mean_Values = sim_means)
+
+mu_theoretical <- 1 / 0.2
+sd_theoretical <- sqrt(1 / (40 * 0.2^2))
+
+ggplot(df_clt, aes(x = Mean_Values)) +
+  geom_histogram(aes(y = after_stat(density)), fill = "skyblue", color = "white", bins = 40) +
+  geom_function(fun = dnorm, args = list(mean = mu_theoretical, sd = sd_theoretical), 
+                color = "darkred", linewidth = 1) +
+  labs(title = "Kiểm chứng CLT trên mẫu phân phối Mũ (n = 40)",
+       x = "Giá trị trung bình mẫu",
+       y = "Mật độ") +
+  theme_minimal()
+```
+
+### 3. Khoảng tin cậy mẫu cho Phương sai
+
+```{r}
+set.seed(789)
+sample_30 <- rexp(30, rate = 0.2)
+n_obs <- length(sample_30)
+S2_obs <- var(sample_30)
+
+# Xác định các giá trị tới hạn của phân phối Chi-bình phương
+chi_lower <- qchisq(0.975, df = n_obs - 1)
+chi_upper <- qchisq(0.025, df = n_obs - 1)
+
+ci_var_lower <- ((n_obs - 1) * S2_obs) / chi_lower
+ci_var_upper <- ((n_obs - 1) * S2_obs) / chi_upper
+
+report_df <- tibble(Lower_Limit = ci_var_lower, Upper_Limit = ci_var_upper)
+report_df
+```
+
+### 4. Nhận xét đồ họa
+
+```{r}
+ggplot() +
+  geom_segment(aes(x = ci_var_lower, y = 1, xend = ci_var_upper, yend = 1), color = "darkblue", linewidth = 1.5) +
+  geom_point(aes(x = c(ci_var_lower, ci_var_upper), y = c(1, 1)), color = "red", size = 3) +
+  geom_vline(xintercept = 1 / (0.2^2), linetype = "dashed", color = "darkgreen") +
+  xlim(ci_var_lower - 5, ci_var_upper + 5) +
+  ylim(0, 2) +
+  labs(title = "Độ rộng Khoảng tin cậy 95% của Phương sai thực nghiệm",
+       x = "Không gian tham số Phương sai",
+       y = "") +
+  theme_minimal()
+```
+
+---
+
+## Bài tập Nhóm 3 (Capstone Project): Ước lượng Điểm và Khoảng Toàn diện
+
+### 1. Khởi tạo dữ liệu ẩn
+  
+```{r}
+set.seed(2026)
+final_data <- tibble(ram_usage = rbeta(3000, shape1 = 2, shape2 = 5))
+final_data
+```
+
+### 2. Ước lượng Mô-men (MoM)
+
+```{r}
+X_bar_ram <- mean(final_data$ram_usage)
+S2_ram <- var(final_data$ram_usage)
+
+mom_factor <- (X_bar_ram * (1 - X_bar_ram) / S2_ram) - 1
+alpha_mom <- X_bar_ram * mom_factor
+beta_mom <- (1 - X_bar_ram) * mom_factor
+
+alpha_mom
+beta_mom
+```
+
+### 3. Ước lượng Hợp lý Cực đại (MLE)
+
+```{r}
+nll_beta <- function(params, data) {
+  alpha <- params[1]
+  beta <- params[2]
+  return(-sum(dbeta(data, shape1 = alpha, shape2 = beta, log = TRUE)))
+}
+
+mle_fit <- nlminb(start = c(alpha_mom, beta_mom), objective = nll_beta,
+                  data = final_data$ram_usage, lower = c(1e-5, 1e-5))
+
+alpha_mle <- mle_fit$par[1]
+beta_mle <- mle_fit$par[2]
+
+alpha_mle
+beta_mle
+```
+
+### 4. Trực quan hóa so sánh Thuật toán
+
+```{r}
+ggplot(final_data, aes(x = ram_usage)) +
+  geom_histogram(aes(y = after_stat(density)), fill = "cornsilk", color = "white", bins = 35) +
+  geom_function(fun = dbeta, args = list(shape1 = alpha_mom, shape2 = beta_mom), 
+                aes(color = "MoM (Liền)"), linewidth = 1) +
+  geom_function(fun = dbeta, args = list(shape1 = alpha_mle, shape2 = beta_mle), 
+                aes(color = "MLE (Đứt nét)"), linetype = "dashed", linewidth = 1) +
+  scale_color_manual(values = c("MoM (Liền)" = "darkgreen", "MLE (Đứt nét)" = "red")) +
+  labs(title = "Đối chiếu kết quả ước lượng MoM và MLE trên phân phối Beta",
+       x = "Tỷ lệ sử dụng RAM",
+       y = "Mật độ",
+       color = "Phương pháp") +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+### 5. Khoảng tin cậy phi tham số
+
+```{r}
+n_ram <- length(final_data$ram_usage)
+alpha_ci <- 0.01
+
+m1 <- qbinom(alpha_ci / 2, size = n_ram, prob = 0.5)
+m2 <- qbinom(1 - alpha_ci / 2, size = n_ram, prob = 0.5)
+
+sorted_ram <- sort(final_data$ram_usage)
+ci_median_lower <- sorted_ram[m1]
+ci_median_upper <- sorted_ram[m2 + 1]
+
+ci_median_lower
+ci_median_upper
+```
