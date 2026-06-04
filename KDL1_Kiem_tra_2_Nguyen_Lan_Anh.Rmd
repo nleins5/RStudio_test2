@@ -17,34 +17,28 @@ body, h1, h2, h3, h4, h5, h6 {
 </style>
 
 ```{r setup, include=FALSE}
+library(tibble)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-set.seed(123)
 ```
 
 # Bài tập Nhóm 1: Tiền xử lý dữ liệu và Khám phá phân phối
 
 ## 1. Khởi tạo và Làm sạch dữ liệu
 
-Sinh ngẫu nhiên mẫu và chèn lỗi:
-
 ```{r bt1_khoi_tao}
-t_raw <- rnorm(5000, mean = 60, sd = 15)
+set.seed(123)
+raw_time <- rnorm(5000, mean = 60, sd = 15)
 
-na_pos <- sample(1:5000, 150)
-t_raw[na_pos] <- NA
+na_indices <- sample(1:5000, 150)
+raw_time[na_indices] <- NA
 
-safe_pos <- which(!is.na(t_raw))
-neg_pos <- sample(safe_pos, 50)
-t_raw[neg_pos] <- runif(50, -30, -1)
-```
+neg_indices <- sample(setdiff(1:5000, na_indices), 50)
+raw_time[neg_indices] <- runif(50, -15, -1)
 
-Làm sạch dữ liệu:
-
-```{r bt1_lam_sach}
-t_clean <- t_raw[!is.na(t_raw) & t_raw >= 0]
-df1 <- data.frame(Time = t_clean)
-n_clean <- nrow(df1)
-n_clean
+# Làm sạch dữ liệu
+cleaned_time <- raw_time[!is.na(raw_time) & raw_time >= 0]
+final_data <- tibble(Time = cleaned_time)
+final_data
 ```
 
 
@@ -54,12 +48,12 @@ n_clean
 Tính trung bình, SD và vẽ phân phối:
 
 ```{r bt1_phan_phoi, fig.width=8, fig.height=5}
-mean_t <- mean(df1$Time)
-sd_t <- sd(df1$Time)
+mean_t <- mean(final_data$Time)
+sd_t <- sd(final_data$Time)
 mean_t
 sd_t
 
-hist(df1$Time,
+hist(final_data$Time,
   freq = FALSE,
   main = "Phân phối thời gian hoàn thành bài thi",
   xlab = "Thời gian (phút)",
