@@ -1,6 +1,6 @@
 ---
 title: "Kiểm tra lần 2 - KDL 1"
-author: "Nguyễn Thành Duy"
+author: "Nguyễn Lan Anh"
 date: "2026-06-04"
 output:
   html_document:
