@@ -6,8 +6,6 @@ output:
   html_document:
     toc: true
     toc_float: true
-    theme: cosmo
-    highlight: tango
 ---
 
 ```{r setup, include=FALSE}
@@ -19,75 +17,66 @@ set.seed(123)
 
 ## 1. Khởi tạo và Làm sạch dữ liệu
 
-Sinh ngẫu nhiên 5000 quan sát từ phân phối chuẩn $N(60, 15^2)$, sau đó giả lập lỗi hệ thống bằng cách chèn 150 giá trị `NA` và 50 giá trị âm vào vector.
+Sinh 5000 quan sát từ phân phối chuẩn N(60, 15^2), rồi chèn lỗi hệ thống (150 NA + 50 giá trị âm).
 
-```{r bt1_khoi_tao}
+```{r}
 raw_time <- rnorm(5000, mean = 60, sd = 15)
 
+# chen 150 NA
 na_indices <- sample(1:5000, 150)
 raw_time[na_indices] <- NA
 
+# chen 50 gia tri am (chi chon tu cac vi tri chua bi NA)
 non_na_indices <- which(!is.na(raw_time))
 neg_indices <- sample(non_na_indices, 50)
 raw_time[neg_indices] <- runif(50, -30, -1)
 ```
 
-Loại bỏ toàn bộ giá trị `NA` và giá trị âm, lưu kết quả vào `final_data`:
+Lọc bỏ NA và giá trị âm, lưu vào `final_data`:
 
-```{r bt1_lam_sach}
+```{r}
 cleaned_time <- raw_time[!is.na(raw_time) & raw_time >= 0]
 final_data <- data.frame(Time = cleaned_time)
-n_cleaned <- nrow(final_data)
-cat("Kich thuoc mau sau khi lam sach:", n_cleaned)
+cat("So quan sat sau khi loc:", nrow(final_data))
 ```
 
-Kích thước mẫu giảm từ 5000 xuống còn $5000 - 150 - 50 = 4800$ quan sát hợp lệ.
+Mẫu còn lại: 5000 - 150 - 50 = 4800 quan sát.
 
 ## 2. Khám phá phân phối
 
-Tính trung bình mẫu $\bar{X}$ và độ lệch chuẩn mẫu $S$, sau đó vẽ Histogram tần suất tương đối kèm đường mật độ chuẩn lý thuyết:
-
-```{r bt1_phan_phoi, fig.width=8, fig.height=5}
+```{r fig.width=7, fig.height=5}
 mean_time <- mean(final_data$Time)
 sd_time <- sd(final_data$Time)
+cat("X_bar =", round(mean_time, 4), "\n")
+cat("S =", round(sd_time, 4))
 
-cat("Mean:", round(mean_time, 4), "| SD:", round(sd_time, 4))
-
-hist(final_data$Time,
-  freq = FALSE,
-  main = "Phan phoi thoi gian hoan thanh bai thi",
-  xlab = "Thoi gian (phut)",
-  ylab = "Mat do",
-  col = "lightgray",
-  border = "white",
-  ylim = c(0, 0.03)
-)
+hist(final_data$Time, freq = FALSE,
+     main = "Phan phoi thoi gian lam bai",
+     xlab = "Thoi gian (phut)", ylab = "Mat do",
+     col = "lightgray", border = "white")
 
 curve(dnorm(x, mean = mean_time, sd = sd_time),
-  add = TRUE,
-  col = "darkred",
-  lwd = 2
-)
+      add = TRUE, col = "darkred", lwd = 2)
 ```
 
-Đường mật độ chuẩn $N(\bar{X}, S^2)$ khớp rất tốt với dạng phân phối thực nghiệm của mẫu dữ liệu.
+Duong mat do chuan N(X_bar, S^2) khop kha tot voi histogram.
 
 ## 3. Ứng dụng hàm xác suất
 
-Xác suất một sinh viên hoàn thành bài thi sớm hơn 45 phút:
-
-```{r bt1_pnorm}
+```{r}
 prob_early <- pnorm(45, mean = mean_time, sd = sd_time)
-cat("P(Time < 45) =", round(prob_early, 4))
+cat("P(X < 45) =", round(prob_early, 4))
 ```
+
+Khoang 15.65% sinh vien hoan thanh bai thi trong vong 45 phut.
 
 ## 4. Hàm phân vị
 
-Mốc thời gian tối đa để nằm trong Top 5% sinh viên nộp bài nhanh nhất (đuôi trái của phân phối):
+Top 5% nhanh nhat tuong ung voi phan vi muc 0.05 (duoi trai):
 
-```{r bt1_qnorm}
+```{r}
 reward_threshold <- qnorm(0.05, mean = mean_time, sd = sd_time)
-cat("Moc thoi gian nhan thuong (Top 5%):", round(reward_threshold, 2), "phut")
+cat("Moc thoi gian nhan thuong:", round(reward_threshold, 2), "phut")
 ```
 
 ---
@@ -96,111 +85,90 @@ cat("Moc thoi gian nhan thuong (Top 5%):", round(reward_threshold, 2), "phut")
 
 ## 1. Viết hàm tổng quát
 
-Hàm `simulate_clt_exp` lặp lại `num_rep` lần việc rút mẫu kích thước $n$ từ phân phối Mũ $Exp(\lambda)$ và tính trung bình mẫu:
-
-```{r bt2_ham}
+```{r}
 simulate_clt_exp <- function(n, lambda, num_rep = 5000) {
   means <- numeric(num_rep)
   for (i in 1:num_rep) {
-    sample_data <- rexp(n, rate = lambda)
-    means[i] <- mean(sample_data)
+    mau <- rexp(n, rate = lambda)
+    means[i] <- mean(mau)
   }
   means
 }
 ```
 
-## 2. Kiểm chứng hội tụ (CLT)
+## 2. Kiểm chứng hội tụ CLT
 
-Theo CLT, phân phối của $\bar{X}$ hội tụ về $N\left(\frac{1}{\lambda}, \frac{1}{n\lambda^2}\right)$. Với $n = 40$ và $\lambda = 0.2$:
+Voi phan phoi Mu (lambda = 0.2), ky vong la 1/lambda = 5, phuong sai cua X_bar la 1/(n*lambda^2).
 
-- $\mu = \frac{1}{0.2} = 5$
-- $\sigma^2_{\bar{X}} = \frac{1}{40 \times 0.04} = 0.625$
-
-```{r bt2_clt, fig.width=8, fig.height=5}
+```{r fig.width=7, fig.height=5}
 n_clt <- 40
 lambda_clt <- 0.2
 sim_means <- simulate_clt_exp(n = n_clt, lambda = lambda_clt)
 
-mu_theory <- 1 / lambda_clt
-var_theory <- 1 / (n_clt * lambda_clt^2)
+# tham so ly thuyet
+mu_theory <- 1 / lambda_clt          # = 5
+var_theory <- 1 / (n_clt * lambda_clt^2)  # = 0.625
 sd_theory <- sqrt(var_theory)
 
-hist(sim_means,
-  freq = FALSE,
-  main = "Kiem chung CLT tren phan phoi Mu (n = 40)",
-  xlab = "Trung binh mau",
-  ylab = "Mat do",
-  col = "lightblue",
-  border = "white",
-  ylim = c(0, 0.75)
-)
+hist(sim_means, freq = FALSE,
+     main = "Kiem chung CLT (phan phoi Mu, n = 40)",
+     xlab = "Trung binh mau", ylab = "Mat do",
+     col = "lightblue", border = "white")
 
 curve(dnorm(x, mean = mu_theory, sd = sd_theory),
-  add = TRUE,
-  col = "darkblue",
-  lwd = 2
-)
+      add = TRUE, col = "darkblue", lwd = 2)
 ```
 
-Histogram của 5000 trung bình mẫu khớp rất tốt với đường cong chuẩn lý thuyết, xác nhận CLT hoạt động hiệu quả ngay cả trên tổng thể lệch phải mạnh (phân phối Mũ).
+Histogram cua 5000 trung binh mau xap xi rat tot voi duong cong chuan ly thuyet => CLT dung.
 
 ## 3. Khoảng tin cậy 95% cho phương sai
 
-Trích xuất một mẫu đơn lẻ gồm 30 quan sát từ phân phối Mũ. Khoảng tin cậy cho $\sigma^2$ dựa trên phân phối $\chi^2$ với $df = n - 1 = 29$:
+Rut 1 mau don le n = 30, tinh KTC cho sigma^2 bang phan phoi Chi-binh phuong:
 
-$$\left[ \frac{(n-1)S^2}{\chi^2_{1-\alpha/2,\; n-1}} \;;\; \frac{(n-1)S^2}{\chi^2_{\alpha/2,\; n-1}} \right]$$
+$$\left[\frac{(n-1)S^2}{\chi^2_{1-\alpha/2}},\; \frac{(n-1)S^2}{\chi^2_{\alpha/2}}\right]$$
 
-```{r bt2_ci_var}
+```{r}
 single_sample <- rexp(30, rate = lambda_clt)
 n_sub <- 30
-sample_var <- var(single_sample)
+s2 <- var(single_sample)
 
-alpha_sub <- 0.05
-chi_lower <- qchisq(1 - alpha_sub / 2, df = n_sub - 1)
-chi_upper <- qchisq(alpha_sub / 2, df = n_sub - 1)
+alpha_ci <- 0.05
+chi_lo <- qchisq(1 - alpha_ci/2, df = n_sub - 1)
+chi_hi <- qchisq(alpha_ci/2, df = n_sub - 1)
 
-ci_var_lower <- (n_sub - 1) * sample_var / chi_lower
-ci_var_upper <- (n_sub - 1) * sample_var / chi_upper
+ci_lower <- (n_sub - 1) * s2 / chi_lo
+ci_upper <- (n_sub - 1) * s2 / chi_hi
 
-cat("Phuong sai mau S^2:", round(sample_var, 4), "\n")
-cat("KTC 95%: [", round(ci_var_lower, 4), ";",
-  round(ci_var_upper, 4), "]\n")
-cat("Phuong sai thuc te (1/lambda^2):", 1 / lambda_clt^2)
+cat("S^2 =", round(s2, 4), "\n")
+cat("KTC 95%: [", round(ci_lower, 4), ";", round(ci_upper, 4), "]\n")
+cat("sigma^2 thuc te = 1/lambda^2 =", 1/lambda_clt^2)
 ```
 
 ## 4. Nhận xét đồ họa
 
-```{r bt2_do_hoa, fig.width=8, fig.height=4}
-ci_labels <- c("Lower Bound", "Upper Bound", "Width")
-ci_values <- c(ci_var_lower, ci_var_upper,
-  ci_var_upper - ci_var_lower)
-df_ci_var <- data.frame(Metric = ci_labels, Value = ci_values)
-print(df_ci_var)
-
-plot(NA,
-  xlim = c(ci_var_lower * 0.7, ci_var_upper * 1.2),
-  ylim = c(0.5, 1.5),
-  xlab = "Gia tri Phuong sai",
-  ylab = "",
-  yaxt = "n",
-  main = "Khoang tin cay 95% cho Phuong sai (n = 30)"
+```{r fig.width=7, fig.height=3}
+df_report <- data.frame(
+  Chi_so = c("Can duoi", "Can tren", "Do rong"),
+  Gia_tri = round(c(ci_lower, ci_upper, ci_upper - ci_lower), 4)
 )
+print(df_report)
 
-lines(c(ci_var_lower, ci_var_upper), c(1, 1),
-  col = "blue", lwd = 3)
-points(c(ci_var_lower, ci_var_upper), c(1, 1),
-  pch = 19, col = "blue", cex = 1.5)
+plot(NA, xlim = c(ci_lower * 0.7, ci_upper * 1.2),
+     ylim = c(0.5, 1.5), yaxt = "n",
+     xlab = "Phuong sai", ylab = "",
+     main = "KTC 95% cho phuong sai (n = 30)")
 
-abline(v = 1 / lambda_clt^2, col = "red", lty = 2, lwd = 2)
+lines(c(ci_lower, ci_upper), c(1, 1), col = "blue", lwd = 3)
+points(c(ci_lower, ci_upper), c(1, 1),
+       pch = 19, col = "blue", cex = 1.5)
+abline(v = 1/lambda_clt^2, col = "red", lty = 2, lwd = 2)
+
 legend("topright",
-  legend = c("Khoang tin cay 95%", "Phuong sai thuc (25)"),
-  col = c("blue", "red"),
-  lty = c(1, 2),
-  lwd = c(3, 2)
-)
+       legend = c("KTC 95%", "Phuong sai thuc (25)"),
+       col = c("blue", "red"), lty = c(1, 2), lwd = c(3, 2))
 ```
 
-Phương sai tổng thể thực tế $\sigma^2 = 1/\lambda^2 = 25$ nằm trong khoảng tin cậy, cho thấy khoảng ước lượng là hợp lệ.
+Gia tri sigma^2 = 25 nam trong khoang tin cay => ket qua hop ly.
 
 ---
 
@@ -208,7 +176,7 @@ Phương sai tổng thể thực tế $\sigma^2 = 1/\lambda^2 = 25$ nằm trong 
 
 ## 1. Khởi tạo dữ liệu ẩn
 
-```{r bt3_khoi_tao}
+```{r}
 final_data <- data.frame(
   ram_usage = rbeta(3000, shape1 = 2, shape2 = 5)
 )
@@ -216,103 +184,87 @@ final_data <- data.frame(
 
 ## 2. Ước lượng Mô-men (MoM)
 
-Công thức MoM cho phân phối Beta:
+Giai he phuong trinh MoM cho phan phoi Beta:
 
-$$\hat{\alpha}_{MoM} = \bar{X} \left( \frac{\bar{X}(1 - \bar{X})}{S^2} - 1 \right), \quad \hat{\beta}_{MoM} = (1 - \bar{X}) \left( \frac{\bar{X}(1 - \bar{X})}{S^2} - 1 \right)$$
+$$\hat{\alpha} = \bar{X}\left(\frac{\bar{X}(1-\bar{X})}{S^2} - 1\right), \quad \hat{\beta} = (1-\bar{X})\left(\frac{\bar{X}(1-\bar{X})}{S^2} - 1\right)$$
 
-```{r bt3_mom}
-mean_ram <- mean(final_data$ram_usage)
-var_ram <- var(final_data$ram_usage)
+```{r}
+xbar <- mean(final_data$ram_usage)
+s2_ram <- var(final_data$ram_usage)
 
-mom_factor <- (mean_ram * (1 - mean_ram) / var_ram) - 1
-alpha_mom <- mean_ram * mom_factor
-beta_mom <- (1 - mean_ram) * mom_factor
+# tinh he so chung
+common <- (xbar * (1 - xbar) / s2_ram) - 1
+alpha_mom <- xbar * common
+beta_mom <- (1 - xbar) * common
 
 cat("MoM: alpha =", round(alpha_mom, 4),
-  "| beta =", round(beta_mom, 4))
+    "| beta =", round(beta_mom, 4))
 ```
 
 ## 3. Ước lượng Hợp lý Cực đại (MLE)
 
-Hàm mục tiêu Negative Log-Likelihood:
+Viet ham Negative Log-Likelihood roi toi uu bang nlminb:
 
-$$\text{NLL}(\alpha, \beta) = -\sum_{i=1}^{n} \ln f(x_i \mid \alpha, \beta)$$
-
-```{r bt3_mle}
+```{r}
 nll_beta <- function(params, data) {
   a <- params[1]
   b <- params[2]
   -sum(dbeta(data, shape1 = a, shape2 = b, log = TRUE))
 }
 
-mle_fit <- nlminb(
-  start = c(alpha_mom, beta_mom),
-  objective = nll_beta,
-  data = final_data$ram_usage,
-  lower = c(1e-5, 1e-5)
-)
+# lay ket qua MoM lam diem xuat phat
+mle_fit <- nlminb(start = c(alpha_mom, beta_mom),
+                  objective = nll_beta,
+                  data = final_data$ram_usage,
+                  lower = c(1e-5, 1e-5))
 
 alpha_mle <- mle_fit$par[1]
 beta_mle <- mle_fit$par[2]
 
 cat("MLE: alpha =", round(alpha_mle, 4),
-  "| beta =", round(beta_mle, 4))
+    "| beta =", round(beta_mle, 4))
 ```
 
-## 4. Trực quan hóa so sánh thuật toán
+## 4. Trực quan hóa so sánh
 
-```{r bt3_so_sanh, fig.width=8, fig.height=5}
-hist(final_data$ram_usage,
-  freq = FALSE,
-  main = "So sanh mat do ly thuyet (MoM vs MLE)",
-  xlab = "Ty le su dung RAM",
-  ylab = "Mat do",
-  col = "lightyellow",
-  border = "white",
-  ylim = c(0, 3)
-)
+```{r fig.width=7, fig.height=5}
+hist(final_data$ram_usage, freq = FALSE,
+     main = "So sanh MoM vs MLE",
+     xlab = "Ty le su dung RAM", ylab = "Mat do",
+     col = "lightyellow", border = "white",
+     ylim = c(0, 3))
 
 curve(dbeta(x, shape1 = alpha_mom, shape2 = beta_mom),
-  add = TRUE,
-  col = "darkgreen",
-  lwd = 2
-)
+      add = TRUE, col = "darkgreen", lwd = 2)
 
 curve(dbeta(x, shape1 = alpha_mle, shape2 = beta_mle),
-  add = TRUE,
-  col = "red",
-  lty = 2,
-  lwd = 2
-)
+      add = TRUE, col = "red", lty = 2, lwd = 2)
 
 legend("topright",
-  legend = c("Uoc luong MoM", "Uoc luong MLE"),
-  col = c("darkgreen", "red"),
-  lty = c(1, 2),
-  lwd = c(2, 2)
-)
+       legend = c("MoM", "MLE"),
+       col = c("darkgreen", "red"),
+       lty = c(1, 2), lwd = c(2, 2))
 ```
 
-Cả hai đường mật độ MoM (nét liền xanh lục) và MLE (nét đứt đỏ) đều khớp rất sát với phân phối thực nghiệm. MLE cho ước lượng tiệm cận chính xác hơn do tận dụng toàn bộ thông tin của mẫu thông qua hàm hợp lý.
+Hai duong mat do gan nhu trung nhau, MLE co xu huong sat gia tri thuc hon mot chut.
 
 ## 5. Khoảng tin cậy phi tham số cho Trung vị
 
-Khoảng tin cậy 99% cho trung vị dựa trên thống kê thứ tự. Chỉ số $k$ và $r$ được xác định từ phân phối nhị thức $Binomial(n, 0.5)$:
+Dung phuong phap thong ke thu tu voi phan phoi Binomial de tim KTC 99% cho median:
 
-```{r bt3_ci_median}
+```{r}
 n_ram <- length(final_data$ram_usage)
 alpha_med <- 0.01
 
-k_med <- qbinom(alpha_med / 2, size = n_ram, prob = 0.5)
-r_med <- qbinom(1 - alpha_med / 2, size = n_ram, prob = 0.5) + 1
+# chi so thu tu k va r
+k <- qbinom(alpha_med / 2, size = n_ram, prob = 0.5)
+r <- qbinom(1 - alpha_med / 2, size = n_ram, prob = 0.5) + 1
 
 sorted_ram <- sort(final_data$ram_usage)
-ci_med_lower <- sorted_ram[k_med]
-ci_med_upper <- sorted_ram[r_med]
 
-cat("KTC 99% cho Median: [", round(ci_med_lower, 4), ";",
-  round(ci_med_upper, 4), "]\n")
-cat("Trung vi mau thuc te:", round(median(final_data$ram_usage), 4))
+cat("KTC 99% cho Median: [", round(sorted_ram[k], 4),
+    ";", round(sorted_ram[r], 4), "]\n")
+cat("Median mau:", round(median(final_data$ram_usage), 4))
 ```
 
-Trung vị mẫu nằm hoàn toàn trong khoảng tin cậy, xác nhận phương pháp thống kê thứ tự hoạt động đúng đắn trên phân phối bất đối xứng.
+Trung vi mau nam trong khoang tin cay => phuong phap thong ke thu tu hoat dong tot cho phan phoi bat doi xung.
