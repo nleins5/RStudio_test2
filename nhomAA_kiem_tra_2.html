@@ -376,8 +376,12 @@ x[neg_pos] &lt;- runif(50, -30, -1)</code></pre>
 <p>Loại bỏ các giá trị NA và các giá trị âm:</p>
 <pre class="r"><code>x_clean &lt;- x[!is.na(x) &amp; x &gt;= 0]
 df &lt;- data.frame(Time = x_clean)
-nrow(df)</code></pre>
-<pre><code>## [1] 4800</code></pre>
+
+# So luong quan sat truoc va sau khi lam sach
+cat(&quot;So luong quan sat truoc khi lam sach:&quot;, length(x), &quot;\n&quot;)</code></pre>
+<pre><code>## So luong quan sat truoc khi lam sach: 5000</code></pre>
+<pre class="r"><code>cat(&quot;So luong quan sat sau khi lam sach:&quot;, nrow(df), &quot;\n&quot;)</code></pre>
+<pre><code>## So luong quan sat sau khi lam sach: 4800</code></pre>
 <p>Số quan sát còn lại sau khi lọc là 4800 (phù hợp vì ban đầu bỏ đi 150
 NA và 50 giá trị âm).</p>
 </div>

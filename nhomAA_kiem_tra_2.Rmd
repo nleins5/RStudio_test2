@@ -34,7 +34,10 @@ Loại bỏ các giá trị NA và các giá trị âm:
 ```{r}
 x_clean <- x[!is.na(x) & x >= 0]
 df <- data.frame(Time = x_clean)
-nrow(df)
+
+# So luong quan sat truoc va sau khi lam sach
+cat("So luong quan sat truoc khi lam sach:", length(x), "\n")
+cat("So luong quan sat sau khi lam sach:", nrow(df), "\n")
 ```
 
 Số quan sát còn lại sau khi lọc là `r nrow(df)` (phù hợp vì ban đầu bỏ đi 150 NA và 50 giá trị âm).
