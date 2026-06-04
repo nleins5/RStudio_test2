@@ -44,7 +44,7 @@ Lọc bỏ NA và số âm để làm sạch dữ liệu:
 t_clean <- t_raw[!is.na(t_raw) & t_raw >= 0]
 df1 <- data.frame(Time = t_clean)
 n_clean <- nrow(df1)
-cat("Số quan sát sau khi làm sạch:", n_clean)
+n_clean
 ```
 
 Số lượng mẫu giảm từ 5000 xuống còn `r n_clean` quan sát sạch.
@@ -56,8 +56,8 @@ Tính trung bình và độ lệch chuẩn của dữ liệu sạch:
 ```{r bt1_phan_phoi, fig.width=8, fig.height=5}
 mean_t <- mean(df1$Time)
 sd_t <- sd(df1$Time)
-
-cat("Mean:", round(mean_t, 4), "| SD:", round(sd_t, 4))
+mean_t
+sd_t
 
 hist(df1$Time,
   freq = FALSE,
@@ -84,7 +84,7 @@ Xác suất sinh viên hoàn thành bài thi sớm hơn 45 phút:
 
 ```{r bt1_pnorm}
 prob <- pnorm(45, mean = mean_t, sd = sd_t)
-cat("P(Time < 45) =", round(prob, 4))
+prob
 ```
 
 Xác suất nộp bài dưới 45 phút là tầm `r round(prob * 100, 2)`%.
@@ -95,7 +95,7 @@ Mốc thời gian để lọt vào top 5% sinh viên làm bài nhanh nhất:
 
 ```{r bt1_qnorm}
 cutoff <- qnorm(0.05, mean = mean_t, sd = sd_t)
-cat("Mốc thời gian nhận thưởng (Top 5% nhanh nhất):", round(cutoff, 2), "phút")
+cutoff
 ```
 
 ---
@@ -164,9 +164,9 @@ chi2 <- qchisq(alpha / 2, df = n_s - 1)
 ci_low <- (n_s - 1) * s2 / chi1
 ci_up <- (n_s - 1) * s2 / chi2
 
-cat("Phương sai mẫu S^2:", round(s2, 4), "\n")
-cat("KTC 95%: [", round(ci_low, 4), ";", round(ci_up, 4), "]\n")
-cat("Phương sai lý thuyết thực tế:", 1 / lam^2)
+s2
+c(ci_low, ci_up)
+1 / lam^2
 ```
 
 ## 4. Nhận xét đồ họa
@@ -223,7 +223,7 @@ k_mom <- (mean_ram * (1 - mean_ram) / var_ram) - 1
 a_mom <- mean_ram * k_mom
 b_mom <- (1 - mean_ram) * k_mom
 
-cat("MoM: alpha =", round(a_mom, 4), "| beta =", round(b_mom, 4))
+c(a_mom, b_mom)
 ```
 
 ## 3. Ước lượng Hợp lý Cực đại (MLE)
@@ -247,7 +247,7 @@ fit <- nlminb(
 a_mle <- fit$par[1]
 b_mle <- fit$par[2]
 
-cat("MLE: alpha =", round(a_mle, 4), "| beta =", round(b_mle, 4))
+c(a_mle, b_mle)
 ```
 
 ## 4. Trực quan hóa so sánh thuật toán
@@ -299,6 +299,6 @@ sorted_ram <- sort(df3$ram)
 med_low <- sorted_ram[idx1]
 med_up <- sorted_ram[idx2]
 
-cat("KTC 99% cho Median: [", round(med_low, 4), ";", round(med_up, 4), "]\n")
-cat("Trung vị mẫu thực tế:", round(median(df3$ram), 4))
+c(med_low, med_up)
+median(df3$ram)
 ```
