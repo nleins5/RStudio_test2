@@ -1,0 +1,298 @@
+---
+title: "Kiểm tra lần 2 - KDL 1"
+author: "Nguyễn Lan Anh"
+date: "2026-06-04"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+set.seed(123)
+```
+
+# Bài tập Nhóm 1: Tiền xử lý dữ liệu và Khám phá phân phối
+
+## 1. Khởi tạo và Làm sạch dữ liệu
+
+Sinh mẫu ngẫu nhiên 5000 quan sát từ phân phối chuẩn N(60, 15^2), sau đó giả lập lỗi bằng cách chèn 150 giá trị NA và 50 giá trị âm.
+
+```{r bt1_khoi_tao}
+t_raw <- rnorm(5000, mean = 60, sd = 15)
+
+na_pos <- sample(1:5000, 150)
+t_raw[na_pos] <- NA
+
+safe_pos <- which(!is.na(t_raw))
+neg_pos <- sample(safe_pos, 50)
+t_raw[neg_pos] <- runif(50, -30, -1)
+```
+
+Lọc bỏ NA và số âm để làm sạch dữ liệu:
+
+```{r bt1_lam_sach}
+t_clean <- t_raw[!is.na(t_raw) & t_raw >= 0]
+df1 <- data.frame(Time = t_clean)
+n_clean <- nrow(df1)
+cat("Số quan sát sau khi làm sạch:", n_clean)
+```
+
+Số lượng mẫu giảm từ 5000 xuống còn `r n_clean` quan sát sạch.
+
+## 2. Khám phá phân phối
+
+Tính trung bình và độ lệch chuẩn của dữ liệu sạch:
+
+```{r bt1_phan_phoi, fig.width=8, fig.height=5}
+mean_t <- mean(df1$Time)
+sd_t <- sd(df1$Time)
+
+cat("Mean:", round(mean_t, 4), "| SD:", round(sd_t, 4))
+
+hist(df1$Time,
+  freq = FALSE,
+  main = "Phân phối thời gian hoàn thành bài thi",
+  xlab = "Thời gian (phút)",
+  ylab = "Mật độ",
+  col = "lightgray",
+  border = "white",
+  ylim = c(0, 0.03)
+)
+
+curve(dnorm(x, mean = mean_t, sd = sd_t),
+  add = TRUE,
+  col = "darkred",
+  lwd = 2
+)
+```
+
+Đường mật độ chuẩn khớp rất tốt với hình dáng histogram thực tế của dữ liệu.
+
+## 3. Ứng dụng hàm xác suất
+
+Xác suất sinh viên hoàn thành bài thi sớm hơn 45 phút:
+
+```{r bt1_pnorm}
+prob <- pnorm(45, mean = mean_t, sd = sd_t)
+cat("P(Time < 45) =", round(prob, 4))
+```
+
+Xác suất nộp bài dưới 45 phút là tầm `r round(prob * 100, 2)`%.
+
+## 4. Hàm phân vị
+
+Mốc thời gian để lọt vào top 5% sinh viên làm bài nhanh nhất:
+
+```{r bt1_qnorm}
+cutoff <- qnorm(0.05, mean = mean_t, sd = sd_t)
+cat("Mốc thời gian nhận thưởng (Top 5% nhanh nhất):", round(cutoff, 2), "phút")
+```
+
+---
+
+# Bài tập Nhóm 2: Lập trình Mô phỏng và Hệ quả CLT
+
+## 1. Viết hàm tổng quát
+
+Hàm mô phỏng CLT chạy `R` lần, mỗi lần rút ra `n` quan sát từ phân phối mũ Exp(lambda) và tính trung bình mẫu:
+
+```{r bt2_ham}
+clt <- function(n, lambda, R = 5000) {
+  means_vector <- numeric(R)
+  for (i in 1:R) {
+    means_vector[i] <- mean(rexp(n, rate = lambda))
+  }
+  means_vector
+}
+```
+
+## 2. Kiểm chứng hội tụ
+
+Với n = 40, lambda = 0.2. Kỳ vọng lý thuyết là 5, phương sai lý thuyết là 0.625 (độ lệch chuẩn là căn của 0.625).
+
+```{r bt2_clt, fig.width=8, fig.height=5}
+n_val <- 40
+lam <- 0.2
+means <- clt(n = n_val, lambda = lam)
+
+mu_lt <- 1 / lam
+var_lt <- 1 / (n_val * lam^2)
+sd_lt <- sqrt(var_lt)
+
+hist(means,
+  freq = FALSE,
+  main = "Kiểm chứng CLT trên phân phối Mũ (n = 40)",
+  xlab = "Trung bình mẫu",
+  ylab = "Mật độ",
+  col = "lightblue",
+  border = "white",
+  ylim = c(0, 0.75)
+)
+
+curve(dnorm(x, mean = mu_lt, sd = sd_lt),
+  add = TRUE,
+  col = "darkblue",
+  lwd = 2
+)
+```
+
+Histogram biểu diễn trung bình mẫu khớp rất đẹp với đường cong chuẩn lý thuyết.
+
+## 3. Khoảng tin cậy cho phương sai
+
+Rút 1 mẫu ngẫu nhiên gồm 30 quan sát từ phân phối mũ để lập khoảng tin cậy 95%:
+
+```{r bt2_ci_var}
+mau_exp <- rexp(30, rate = lam)
+n_s <- 30
+s2 <- var(mau_exp)
+
+alpha <- 0.05
+chi1 <- qchisq(1 - alpha / 2, df = n_s - 1)
+chi2 <- qchisq(alpha / 2, df = n_s - 1)
+
+ci_low <- (n_s - 1) * s2 / chi1
+ci_up <- (n_s - 1) * s2 / chi2
+
+cat("Phương sai mẫu S^2:", round(s2, 4), "\n")
+cat("KTC 95%: [", round(ci_low, 4), ";", round(ci_up, 4), "]\n")
+cat("Phương sai lý thuyết thực tế:", 1 / lam^2)
+```
+
+## 4. Nhận xét đồ họa
+
+```{r bt2_do_hoa, fig.width=8, fig.height=4}
+ci_df <- data.frame(
+  Metric = c("Cận dưới", "Cận trên", "Độ rộng"),
+  Value = c(ci_low, ci_up, ci_up - ci_low)
+)
+print(ci_df)
+
+plot(NA,
+  xlim = c(ci_low * 0.7, ci_up * 1.2),
+  ylim = c(0.5, 1.5),
+  xlab = "Giá trị Phương sai",
+  ylab = "",
+  yaxt = "n",
+  main = "Khoảng tin cậy 95% cho Phương sai (n = 30)"
+)
+
+lines(c(ci_low, ci_up), c(1, 1), col = "blue", lwd = 3)
+points(c(ci_low, ci_up), c(1, 1), pch = 19, col = "blue", cex = 1.5)
+abline(v = 1 / lam^2, col = "red", lty = 2, lwd = 2)
+
+legend("topright",
+  legend = c("KTC 95%", "Phương sai thực (25)"),
+  col = c("blue", "red"),
+  lty = c(1, 2),
+  lwd = c(3, 2)
+)
+```
+
+Phương sai thực (25) nằm gọn trong khoảng tin cậy tìm được.
+
+---
+
+# Bài tập Nhóm 3 (Capstone Project): Ước lượng Điểm và Khoảng Toàn diện
+
+## 1. Khởi tạo dữ liệu ẩn
+
+```{r bt3_khoi_tao}
+df3 <- data.frame(
+  ram = rbeta(3000, shape1 = 2, shape2 = 5)
+)
+```
+
+## 2. Ước lượng Mô-men (MoM)
+
+```{r bt3_mom}
+mean_ram <- mean(df3$ram)
+var_ram <- var(df3$ram)
+
+k_mom <- (mean_ram * (1 - mean_ram) / var_ram) - 1
+a_mom <- mean_ram * k_mom
+b_mom <- (1 - mean_ram) * k_mom
+
+cat("MoM: alpha =", round(a_mom, 4), "| beta =", round(b_mom, 4))
+```
+
+## 3. Ước lượng Hợp lý Cực đại (MLE)
+
+Hàm tính trừ log-likelihood:
+
+```{r bt3_mle}
+nll_func <- function(params, data) {
+  a <- params[1]
+  b <- params[2]
+  -sum(dbeta(data, shape1 = a, shape2 = b, log = TRUE))
+}
+
+fit <- nlminb(
+  start = c(a_mom, b_mom),
+  objective = nll_func,
+  data = df3$ram,
+  lower = c(1e-5, 1e-5)
+)
+
+a_mle <- fit$par[1]
+b_mle <- fit$par[2]
+
+cat("MLE: alpha =", round(a_mle, 4), "| beta =", round(b_mle, 4))
+```
+
+## 4. Trực quan hóa so sánh thuật toán
+
+```{r bt3_so_sanh, fig.width=8, fig.height=5}
+hist(df3$ram,
+  freq = FALSE,
+  main = "So sánh mật độ lý thuyết (MoM vs MLE)",
+  xlab = "Tỷ lệ sử dụng RAM",
+  ylab = "Mật độ",
+  col = "lightyellow",
+  border = "white",
+  ylim = c(0, 3)
+)
+
+curve(dbeta(x, shape1 = a_mom, shape2 = b_mom),
+  add = TRUE,
+  col = "darkgreen",
+  lwd = 2
+)
+
+curve(dbeta(x, shape1 = a_mle, shape2 = b_mle),
+  add = TRUE,
+  col = "red",
+  lty = 2,
+  lwd = 2
+)
+
+legend("topright",
+  legend = c("Ước lượng MoM", "Ước lượng MLE"),
+  col = c("darkgreen", "red"),
+  lty = c(1, 2),
+  lwd = c(2, 2)
+)
+```
+
+Hai đường mật độ MoM và MLE khớp sát nhau và đè khít lên phân phối thực nghiệm.
+
+## 5. Khoảng tin cậy phi tham số cho Trung vị
+
+```{r bt3_ci_median}
+n_r <- length(df3$ram)
+alpha_ci <- 0.01
+
+idx1 <- qbinom(alpha_ci / 2, size = n_r, prob = 0.5)
+idx2 <- qbinom(1 - alpha_ci / 2, size = n_r, prob = 0.5) + 1
+
+sorted_ram <- sort(df3$ram)
+med_low <- sorted_ram[idx1]
+med_up <- sorted_ram[idx2]
+
+cat("KTC 99% cho Median: [", round(med_low, 4), ";", round(med_up, 4), "]\n")
+cat("Trung vị mẫu thực tế:", round(median(df3$ram), 4))
+```
