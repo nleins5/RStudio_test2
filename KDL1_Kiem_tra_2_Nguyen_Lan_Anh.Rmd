@@ -18,6 +18,7 @@ body, h1, h2, h3, h4, h5, h6 {
 
 ```{r setup, include=FALSE}
 library(tibble)
+library(ggplot2)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
@@ -53,21 +54,13 @@ sd_t <- sd(final_data$Time)
 mean_t
 sd_t
 
-hist(final_data$Time,
-  freq = FALSE,
-  main = "Phân phối thời gian hoàn thành bài thi",
-  xlab = "Thời gian (phút)",
-  ylab = "Mật độ",
-  col = "lightgray",
-  border = "white",
-  ylim = c(0, 0.03)
-)
-
-curve(dnorm(x, mean = mean_t, sd = sd_t),
-  add = TRUE,
-  col = "darkred",
-  lwd = 2
-)
+ggplot(final_data, aes(x = Time)) +
+  geom_histogram(aes(y = after_stat(density)), fill = "lightgray", color = "white", bins = 45) +
+  geom_function(fun = dnorm, args = list(mean = mean_t, sd = sd_t), color = "darkred", linewidth = 1) +
+  labs(title = "Phân phối thời gian hoàn thành bài thi",
+       x = "Thời gian (phút)",
+       y = "Mật độ") +
+  theme_minimal()
 ```
 
 
@@ -123,21 +116,14 @@ mu_lt <- 1 / lam
 var_lt <- 1 / (n_val * lam^2)
 sd_lt <- sqrt(var_lt)
 
-hist(means,
-  freq = FALSE,
-  main = "Kiểm chứng CLT trên phân phối Mũ (n = 40)",
-  xlab = "Trung bình mẫu",
-  ylab = "Mật độ",
-  col = "lightblue",
-  border = "white",
-  ylim = c(0, 0.75)
-)
-
-curve(dnorm(x, mean = mu_lt, sd = sd_lt),
-  add = TRUE,
-  col = "darkblue",
-  lwd = 2
-)
+df_clt <- tibble(Mean_Values = means)
+ggplot(df_clt, aes(x = Mean_Values)) +
+  geom_histogram(aes(y = after_stat(density)), fill = "lightblue", color = "white", bins = 40) +
+  geom_function(fun = dnorm, args = list(mean = mu_lt, sd = sd_lt), color = "darkblue", linewidth = 1) +
+  labs(title = "Kiểm chứng CLT trên phân phối Mũ (n = 40)",
+       x = "Trung bình mẫu",
+       y = "Mật độ") +
+  theme_minimal()
 ```
 
 
@@ -166,31 +152,25 @@ c(ci_low, ci_up)
 ## 4. Nhận xét đồ họa
 
 ```{r bt2_do_hoa, fig.width=8, fig.height=4}
-ci_df <- data.frame(
+ci_df <- tibble(
   Metric = c("Cận dưới", "Cận trên", "Độ rộng"),
   Value = c(ci_low, ci_up, ci_up - ci_low)
 )
-print(ci_df)
+ci_df
 
-plot(NA,
-  xlim = c(ci_low * 0.7, ci_up * 1.2),
-  ylim = c(0.5, 1.5),
-  xlab = "Giá trị Phương sai",
-  ylab = "",
-  yaxt = "n",
-  main = "Khoảng tin cậy 95% cho Phương sai (n = 30)"
-)
-
-lines(c(ci_low, ci_up), c(1, 1), col = "blue", lwd = 3)
-points(c(ci_low, ci_up), c(1, 1), pch = 19, col = "blue", cex = 1.5)
-abline(v = 1 / lam^2, col = "red", lty = 2, lwd = 2)
-
-legend("topright",
-  legend = c("KTC 95%", "Phương sai thực (25)"),
-  col = c("blue", "red"),
-  lty = c(1, 2),
-  lwd = c(3, 2)
-)
+ggplot() +
+  geom_segment(aes(x = ci_low, y = 1, xend = ci_up, yend = 1), color = "blue", linewidth = 1.5) +
+  geom_point(aes(x = c(ci_low, ci_up), y = c(1, 1)), color = "blue", size = 3) +
+  geom_vline(xintercept = 1 / lam^2, linetype = "dashed", color = "red", linewidth = 1) +
+  xlim(ci_low * 0.7, ci_up * 1.2) +
+  ylim(0, 2) +
+  labs(title = "Khoảng tin cậy 95% cho Phương sai (n = 30)",
+       x = "Giá trị Phương sai",
+       y = "") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.minor = element_blank())
 ```
 
 
@@ -202,7 +182,7 @@ legend("topright",
 ## 1. Khởi tạo dữ liệu ẩn
 
 ```{r bt3_khoi_tao}
-df3 <- data.frame(
+df3 <- tibble(
   ram = rbeta(3000, shape1 = 2, shape2 = 5)
 )
 ```
@@ -247,35 +227,19 @@ c(a_mle, b_mle)
 ## 4. Trực quan hóa so sánh thuật toán
 
 ```{r bt3_so_sanh, fig.width=8, fig.height=5}
-hist(df3$ram,
-  freq = FALSE,
-  main = "So sánh mật độ lý thuyết (MoM vs MLE)",
-  xlab = "Tỷ lệ sử dụng RAM",
-  ylab = "Mật độ",
-  col = "lightyellow",
-  border = "white",
-  ylim = c(0, 3)
-)
-
-curve(dbeta(x, shape1 = a_mom, shape2 = b_mom),
-  add = TRUE,
-  col = "darkgreen",
-  lwd = 2
-)
-
-curve(dbeta(x, shape1 = a_mle, shape2 = b_mle),
-  add = TRUE,
-  col = "red",
-  lty = 2,
-  lwd = 2
-)
-
-legend("topright",
-  legend = c("Ước lượng MoM", "Ước lượng MLE"),
-  col = c("darkgreen", "red"),
-  lty = c(1, 2),
-  lwd = c(2, 2)
-)
+ggplot(df3, aes(x = ram)) +
+  geom_histogram(aes(y = after_stat(density)), fill = "lightyellow", color = "white", bins = 35) +
+  geom_function(fun = dbeta, args = list(shape1 = a_mom, shape2 = b_mom), 
+                aes(color = "Ước lượng MoM"), linewidth = 1) +
+  geom_function(fun = dbeta, args = list(shape1 = a_mle, shape2 = b_mle), 
+                aes(color = "Ước lượng MLE"), linetype = "dashed", linewidth = 1) +
+  scale_color_manual(values = c("Ước lượng MoM" = "darkgreen", "Ước lượng MLE" = "red")) +
+  labs(title = "So sánh mật độ lý thuyết (MoM vs MLE)",
+       x = "Tỷ lệ sử dụng RAM",
+       y = "Mật độ",
+       color = "Phương pháp") +
+  theme_minimal() +
+  theme(legend.position = "top")
 ```
 
 
