@@ -1,0 +1,320 @@
+---
+title: "Kiem tra lan 2 - KDL 1"
+author: "Nguyen Thanh Duy"
+date: "2026-06-04"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4.5)
+```
+
+### Bai tap Nhom 1: Tien xu ly du lieu va Kham pha phan phoi
+
+#### 1. Khoi tao va lam sach du lieu
+
+Du lieu ban dau gom 5000 thoi gian lam bai. Sau khi chen loi `NA` va gia tri am, nhom loc lai nhung quan sat hop le va luu vao `final_data`.
+
+```{r nhom1-lam-sach}
+set.seed(104)
+
+raw_time <- rnorm(5000, mean = 60, sd = 15)
+
+na_pos <- sample(seq_along(raw_time), 150)
+raw_time[na_pos] <- NA
+
+negative_pool <- setdiff(seq_along(raw_time), na_pos)
+negative_pos <- sample(negative_pool, 50)
+raw_time[negative_pos] <- -abs(raw_time[negative_pos])
+
+clean_time <- raw_time[!is.na(raw_time) & raw_time >= 0]
+final_data <- data.frame(Time = clean_time)
+final_data_time <- final_data
+
+c(
+  so_quan_sat_ban_dau = length(raw_time),
+  so_NA = sum(is.na(raw_time)),
+  so_gia_tri_am = sum(raw_time < 0, na.rm = TRUE),
+  so_quan_sat_sau_lam_sach = nrow(final_data)
+)
+
+head(final_data)
+```
+
+#### 2. Kham pha phan phoi
+
+```{r nhom1-histogram}
+mean_time <- mean(final_data$Time)
+sd_time <- sd(final_data$Time)
+
+c(trung_binh_mau = mean_time, do_lech_chuan_mau = sd_time)
+
+hist(final_data$Time,
+     freq = FALSE,
+     breaks = 30,
+     col = "gray85",
+     border = "white",
+     main = "Phan phoi thoi gian lam bai",
+     xlab = "Thoi gian (phut)")
+
+curve(dnorm(x, mean = mean_time, sd = sd_time),
+      add = TRUE,
+      col = "blue",
+      lwd = 2)
+```
+
+Histogram co dang gan voi duong mat do chuan vi du lieu duoc sinh tu phan phoi chuan va cac loi da duoc loai bo.
+
+#### 3. Xac suat hoan thanh som hon 45 phut
+
+```{r nhom1-pnorm}
+prob_before_45 <- pnorm(45, mean = mean_time, sd = sd_time)
+prob_before_45
+```
+
+Xac suat uoc tinh mot sinh vien hoan thanh bai thi som hon 45 phut la `r round(prob_before_45, 4)`.
+
+#### 4. Moc thoi gian cho top 5% nop bai nhanh nhat
+
+```{r nhom1-qnorm}
+fastest_5_percent_cutoff <- qnorm(0.05, mean = mean_time, sd = sd_time)
+fastest_5_percent_cutoff
+```
+
+Theo mo hinh chuan tu mau, sinh vien can hoan thanh khong qua `r round(fastest_5_percent_cutoff, 2)` phut de nam trong nhom 5% nhanh nhat.
+
+### Bai tap Nhom 2: Mo phong CLT va khoang tin cay phuong sai
+
+#### 1. Viet ham mo phong
+
+Ham `simulate_clt_exp()` rut mau tu phan phoi mu, tinh trung binh mau, va lap lai qua `R` lan.
+
+```{r nhom2-ham-mo-phong}
+simulate_clt_exp <- function(n, lambda, R = 5000) {
+  sample_means <- numeric(R)
+  
+  for (i in seq_len(R)) {
+    sample_means[i] <- mean(rexp(n, rate = lambda))
+  }
+  
+  sample_means
+}
+
+set.seed(202)
+
+n_exp <- 40
+lambda_exp <- 0.2
+exp_means <- simulate_clt_exp(n = n_exp, lambda = lambda_exp, R = 5000)
+
+head(exp_means)
+```
+
+#### 2. Kiem chung hoi tu CLT
+
+Voi phan phoi mu co tham so `lambda`, trung binh tong the la `1 / lambda`. Phuong sai cua trung binh mau kich thuoc `n` la `1 / (n * lambda^2)`.
+
+```{r nhom2-clt-histogram}
+theory_mean <- 1 / lambda_exp
+theory_sd <- sqrt(1 / (n_exp * lambda_exp^2))
+
+hist(exp_means,
+     freq = FALSE,
+     breaks = 35,
+     col = "gray85",
+     border = "white",
+     main = "Phan phoi trung binh mau tu phan phoi mu",
+     xlab = "Trung binh mau")
+
+curve(dnorm(x, mean = theory_mean, sd = theory_sd),
+      add = TRUE,
+      col = "red",
+      lwd = 2)
+
+c(trung_binh_ly_thuyet = theory_mean, do_lech_chuan_ly_thuyet = theory_sd)
+```
+
+Duong chuan ly thuyet bam sat histogram cua cac trung binh mau, phu hop voi Dinh ly Gioi han Trung tam.
+
+#### 3. Khoang tin cay 95% cho phuong sai
+
+```{r nhom2-ci-phuong-sai}
+set.seed(203)
+
+sample_30 <- sample(exp_means, size = 30)
+sample_var <- var(sample_30)
+df_var <- length(sample_30) - 1
+alpha_var <- 0.05
+
+var_ci <- c(
+  lower = df_var * sample_var / qchisq(1 - alpha_var / 2, df = df_var),
+  upper = df_var * sample_var / qchisq(alpha_var / 2, df = df_var)
+)
+
+variance_report <- data.frame(
+  sample_variance = sample_var,
+  lower_95 = var_ci["lower"],
+  upper_95 = var_ci["upper"]
+)
+
+variance_report
+```
+
+#### 4. Truc quan hoa khoang tin cay
+
+```{r nhom2-ci-plot}
+pad_var <- diff(var_ci) * 0.15
+
+plot(NA,
+     xlim = c(var_ci["lower"] - pad_var, var_ci["upper"] + pad_var),
+     ylim = c(0, 1),
+     yaxt = "n",
+     xlab = "Phuong sai",
+     ylab = "",
+     main = "Khoang tin cay 95% cho phuong sai")
+
+segments(var_ci["lower"], 0.5, var_ci["upper"], 0.5,
+         col = "blue", lwd = 4)
+points(sample_var, 0.5, pch = 19, col = "red")
+axis(2, at = 0.5, labels = "CI 95%", las = 1)
+```
+
+Diem mau do la phuong sai mau, con doan mau xanh la khoang tin cay 95% cho phuong sai.
+
+### Bai tap Nhom 3: Uoc luong MoM, MLE va khoang tin cay phi tham so
+
+#### 1. Khoi tao du lieu an
+
+Trong phan nay, `final_data` duoc tao lai theo dung yeu cau cua bai tap Beta.
+
+```{r nhom3-du-lieu}
+set.seed(303)
+
+final_data <- data.frame(
+  ram_usage = rbeta(3000, shape1 = 2, shape2 = 5)
+)
+
+ram_usage <- final_data$ram_usage
+
+summary(ram_usage)
+```
+
+#### 2. Uoc luong MoM
+
+Voi phan phoi Beta, dat `m` la trung binh mau va `v` la phuong sai mau:
+
+\[
+\hat{\alpha} = m \left(\frac{m(1-m)}{v} - 1\right), \qquad
+\hat{\beta} = (1-m) \left(\frac{m(1-m)}{v} - 1\right)
+\]
+
+```{r nhom3-mom}
+m_ram <- mean(ram_usage)
+v_ram <- var(ram_usage)
+common_part <- m_ram * (1 - m_ram) / v_ram - 1
+
+alpha_mom <- m_ram * common_part
+beta_mom <- (1 - m_ram) * common_part
+
+mom_result <- c(alpha_MoM = alpha_mom, beta_MoM = beta_mom)
+mom_result
+```
+
+#### 3. Uoc luong MLE
+
+```{r nhom3-mle}
+nll_beta <- function(params, data) {
+  alpha <- params[1]
+  beta <- params[2]
+  -sum(dbeta(data, shape1 = alpha, shape2 = beta, log = TRUE))
+}
+
+mle_fit <- nlminb(
+  start = c(alpha_mom, beta_mom),
+  objective = nll_beta,
+  data = ram_usage,
+  lower = c(1e-6, 1e-6)
+)
+
+alpha_mle <- mle_fit$par[1]
+beta_mle <- mle_fit$par[2]
+
+mle_result <- c(alpha_MLE = alpha_mle, beta_MLE = beta_mle)
+mle_result
+```
+
+Gia tri MLE gan voi tham so sinh du lieu ban dau, nen qua trinh toi uu hoa dang cho ket qua hop ly.
+
+#### 4. So sanh truc quan MoM va MLE
+
+```{r nhom3-so-sanh}
+hist(ram_usage,
+     freq = FALSE,
+     breaks = 40,
+     col = "gray85",
+     border = "white",
+     main = "So sanh mat do Beta theo MoM va MLE",
+     xlab = "Ty le su dung RAM")
+
+curve(dbeta(x, shape1 = alpha_mom, shape2 = beta_mom),
+      from = 0, to = 1,
+      add = TRUE,
+      col = "darkgreen",
+      lwd = 2)
+
+curve(dbeta(x, shape1 = alpha_mle, shape2 = beta_mle),
+      from = 0, to = 1,
+      add = TRUE,
+      col = "red",
+      lwd = 2,
+      lty = 2)
+
+legend("topright",
+       legend = c("MoM", "MLE"),
+       col = c("darkgreen", "red"),
+       lty = c(1, 2),
+       lwd = 2,
+       bty = "n")
+```
+
+Hai duong uoc luong gan nhau va deu nam sat phan phoi thuc te cua `ram_usage`.
+
+#### 5. Khoang tin cay phi tham so 99% cho trung vi
+
+Khoang tin cay duoc lay tu thong ke thu tu. Chi so can duoi va can tren duoc tinh bang `qbinom()` voi xac suat 0.5 vi xet trung vi.
+
+```{r nhom3-ci-median}
+ordered_ram <- sort(ram_usage)
+n_ram <- length(ordered_ram)
+alpha_median <- 0.01
+
+lower_index <- qbinom(alpha_median / 2, size = n_ram, prob = 0.5)
+upper_index <- qbinom(1 - alpha_median / 2, size = n_ram, prob = 0.5) + 1
+
+lower_index <- max(1, lower_index)
+upper_index <- min(n_ram, upper_index)
+
+median_ci <- c(
+  lower = ordered_ram[lower_index],
+  upper = ordered_ram[upper_index]
+)
+
+coverage <- pbinom(upper_index - 1, size = n_ram, prob = 0.5) -
+  pbinom(lower_index - 1, size = n_ram, prob = 0.5)
+
+median_report <- data.frame(
+  lower_index = lower_index,
+  upper_index = upper_index,
+  lower_99 = median_ci["lower"],
+  upper_99 = median_ci["upper"],
+  coverage = coverage
+)
+
+median_report
+```
+
+Khoang tin cay 99% cho trung vi cua `ram_usage` la tu `r round(median_ci["lower"], 4)` den `r round(median_ci["upper"], 4)`.
