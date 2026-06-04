@@ -1,5 +1,5 @@
 ---
-title: "BÀI KIỂM TRA 2 - KHOA HỌC DỮ LIỆU 1"
+title: "Kiểm tra 2 - KDL1"
 author: "Nguyễn Lan Anh"
 date: "2026-06-04"
 output: html_document
@@ -10,88 +10,85 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 set.seed(123)
 ```
 
-# Bài 1: Tiền xử lý dữ liệu và khám phá phân phối
+# Bài 1: Làm sạch dữ liệu & Vẽ đồ thị
 
-## 1. Sinh dữ liệu và làm sạch
+## Khởi tạo và lọc dữ liệu
 
-Tạo mẫu ngẫu nhiên 5000 quan sát từ phân phối chuẩn N(60, 15^2) rồi thêm giá trị NA và số âm vào.
+Tạo 5000 quan sát phân phối chuẩn N(60, 15^2) rồi nhét NA với số âm vào để giả lập dữ liệu lỗi.
 
 ```{r}
 x <- rnorm(5000, 60, 15)
 
-# Chen 150 NA
-na_pos <- sample(1:5000, 150)
-x[na_pos] <- NA
+# chen na
+x[sample(1:5000, 150)] <- NA
 
-# Chen 50 so am
-no_na_pos <- which(!is.na(x))
-neg_pos <- sample(no_na_pos, 50)
-x[neg_pos] <- runif(50, -30, -1)
+# chen so am
+non_na <- which(!is.na(x))
+x[sample(non_na, 50)] <- runif(50, -30, -1)
 ```
 
-Loại bỏ các giá trị NA và các giá trị âm:
+Lọc bỏ NA với số âm:
 
 ```{r}
 x_clean <- x[!is.na(x) & x >= 0]
 df <- data.frame(Time = x_clean)
 
-# So luong quan sat truoc va sau khi lam sach
-cat("So luong quan sat truoc khi lam sach:", length(x), "\n")
-cat("So luong quan sat sau khi lam sach:", nrow(df), "\n")
+cat("Original:", length(x), "\n")
+cat("Cleaned:", nrow(df), "\n")
 ```
 
-Số quan sát còn lại sau khi lọc là `r nrow(df)` (phù hợp vì ban đầu bỏ đi 150 NA và 50 giá trị âm).
+Lọc xong còn lại `r nrow(df)` dòng.
 
-## 2. Vẽ đồ thị và khám phá phân phối
+## Vẽ histogram khám phá dữ liệu
 
-Tính trung bình và độ lệch chuẩn của dữ liệu sau khi lọc:
+Tính mean với sd của dữ liệu sạch:
 
 ```{r}
-m_val <- mean(df$Time)
-s_val <- sd(df$Time)
-m_val
-s_val
+m <- mean(df$Time)
+s <- sd(df$Time)
+m
+s
 ```
 
-Vẽ histogram cùng đường mật độ chuẩn N(mean, sd^2):
+Vẽ biểu đồ histogram kèm đường mật độ chuẩn N(mean, sd):
 
 ```{r}
 hist(df$Time, freq = FALSE, 
-     main = "Histogram thoi gian lam bai thi", 
+     main = "Thoi gian lam bai", 
      xlab = "Phut", ylab = "Mat do", 
      col = "lightblue", border = "white")
 
-curve(dnorm(x, mean = m_val, sd = s_val), 
+curve(dnorm(x, mean = m, sd = s), 
       add = TRUE, col = "red", lwd = 2)
 ```
 
-Nhìn chung đường mật độ chuẩn khớp khá tốt với histogram.
+Đường màu đỏ vẽ đè lên thấy khớp khá tốt với histogram.
 
-## 3. Tính xác suất sinh viên hoàn thành dưới 45 phút
+## Tính xác suất làm xong dưới 45 phút
 
 ```{r}
-p_val <- pnorm(45, mean = m_val, sd = s_val)
+p_val <- pnorm(45, mean = m, sd = s)
 p_val
 ```
 
-Tỷ lệ sinh viên hoàn thành bài dưới 45 phút là khoảng `r round(p_val * 100, 2)`%.
+Tầm `r round(p_val * 100, 2)`% sinh viên hoàn thành bài thi dưới 45 phút.
 
-## 4. Tìm mốc thời gian của top 5% nhanh nhất
+## Tìm mốc thời gian cho top 5% nhanh nhất
 
-Top 5% nhanh nhất tức là thời gian làm bài ngắn nhất, ứng với phân vị 0.05:
+Top 5% làm nhanh nhất tương ứng với phân vị 0.05 ở phía bên trái:
 
 ```{r}
-q_val <- qnorm(0.05, mean = m_val, sd = s_val)
+q_val <- qnorm(0.05, mean = m, sd = s)
 q_val
 ```
 
-Mốc thời gian để được khen thưởng là dưới `r round(q_val, 2)` phút.
+Mốc thời gian để được thưởng là khoảng `r round(q_val, 2)` phút.
 
 ---
 
-# Bài 2: Mô phỏng và Định lý giới hạn trung tâm (CLT)
+# Bài 2: Mô phỏng Định lý giới hạn trung tâm (CLT)
 
-## 1. Viết hàm mô phỏng CLT
+## Viết hàm mô phỏng
 
 ```{r}
 sim_clt <- function(n, lambda, reps = 5000) {
@@ -103,9 +100,9 @@ sim_clt <- function(n, lambda, reps = 5000) {
 }
 ```
 
-## 2. Kiểm chứng CLT với phân phối mũ
+## Chạy thử CLT với phân phối mũ
 
-Mô phỏng với n = 40, lambda = 0.2. Kỳ vọng lý thuyết là 1/lambda = 5. Phương sai lý thuyết của trung bình mẫu là 1/(n * lambda^2) = 0.625.
+Chạy thử với n = 40, lambda = 0.2. Kỳ vọng là 5, phương sai trung bình mẫu là 0.625.
 
 ```{r}
 n <- 40
@@ -116,42 +113,42 @@ mu_t <- 1 / lam
 sd_t <- sqrt(1 / (n * lam^2))
 
 hist(sim_data, freq = FALSE, 
-     main = "Kiem chung CLT (n = 40)", 
-     xlab = "Trung binh mau", ylab = "Mat do",
+     main = "Histogram trung binh mau (n = 40)", 
+     xlab = "Gia tri", ylab = "Mat do",
      col = "lightgreen", border = "white")
 
 curve(dnorm(x, mean = mu_t, sd = sd_t), 
       add = TRUE, col = "blue", lwd = 2)
 ```
 
-Histogram của các trung bình mẫu xấp xỉ rất tốt phân phối chuẩn.
+Biểu đồ histogram vẽ ra nhìn chuẩn luôn, rất giống phân phối chuẩn.
 
-## 3. Khoảng tin cậy 95% cho phương sai
+## Tính KTC 95% cho phương sai
 
-Lấy 1 mẫu kích thước n = 30 từ phân phối mũ:
+Lấy thử 1 mẫu kích thước n = 30:
 
 ```{r}
 sample_data <- rexp(30, rate = lam)
 n_s <- 30
-s2_val <- var(sample_data)
+s2 <- var(sample_data)
 
-# Tim gia tri toi han Chi-square
+# tra bang chi-square
 chi_l <- qchisq(0.975, df = n_s - 1)
 chi_r <- qchisq(0.025, df = n_s - 1)
 
-ci_l <- (n_s - 1) * s2_val / chi_l
-ci_r <- (n_s - 1) * s2_val / chi_r
+ci_l <- (n_s - 1) * s2 / chi_l
+ci_r <- (n_s - 1) * s2 / chi_r
 
 ci_l
 ci_r
 ```
 
-## 4. Vẽ đồ thị khoảng tin cậy
+## Vẽ khoảng tin cậy ra đồ thị
 
 ```{r, fig.height=4}
 plot(NA, xlim = c(ci_l * 0.8, ci_r * 1.2), ylim = c(0, 2), 
      yaxt = "n", xlab = "Gia tri", ylab = "", 
-     main = "Khoang tin cay 95% cho phuong sai")
+     main = "KTC 95% cua phuong sai")
 
 lines(c(ci_l, ci_r), c(1, 1), col = "darkgreen", lwd = 3)
 points(c(ci_l, ci_r), c(1, 1), pch = 19, col = "darkgreen", cex = 1.5)
@@ -161,19 +158,19 @@ legend("topright", legend = c("KTC 95%", "Gia tri thuc (25)"),
        col = c("darkgreen", "red"), lty = c(1, 2), lwd = c(3, 2))
 ```
 
-Giá trị phương sai lý thuyết (25) nằm trong khoảng tin cậy ước lượng từ mẫu.
+Đường màu đỏ (phương sai thực tế = 25) nằm trong khoảng tin cậy nên ước lượng chuẩn.
 
 ---
 
-# Bài 3: Ước lượng Beta và Khoảng tin cậy cho Trung vị
+# Bài 3: Ước lượng Beta & KTC trung vị
 
-## 1. Khởi tạo dữ liệu RAM
+## Khởi tạo dữ liệu RAM
 
 ```{r}
 ram <- rbeta(3000, shape1 = 2, shape2 = 5)
 ```
 
-## 2. Ước lượng tham số bằng phương pháp Mô-men (MoM)
+## Ước lượng MoM
 
 ```{r}
 m1 <- mean(ram)
@@ -187,18 +184,18 @@ a_mom
 b_mom
 ```
 
-## 3. Ước lượng bằng phương pháp hợp lý cực đại (MLE)
+## Ước lượng MLE
 
-Viết hàm trừ log-likelihood cho phân phối Beta rồi dùng hàm `nlminb` tối ưu:
+Tối ưu hàm trừ log-likelihood bằng `nlminb`:
 
 ```{r}
-nll_beta <- function(theta, data) {
+nll <- function(theta, data) {
   a <- theta[1]
   b <- theta[2]
   -sum(dbeta(data, shape1 = a, shape2 = b, log = TRUE))
 }
 
-fit <- nlminb(start = c(a_mom, b_mom), objective = nll_beta, 
+fit <- nlminb(start = c(a_mom, b_mom), objective = nll, 
               data = ram, lower = c(1e-4, 1e-4))
 
 a_mle <- fit$par[1]
@@ -208,11 +205,11 @@ a_mle
 b_mle
 ```
 
-## 4. Vẽ đồ thị so sánh mật độ MoM và MLE
+## So sánh MoM vs MLE bằng đồ thị
 
 ```{r}
 hist(ram, freq = FALSE, 
-     main = "So sanh phuong phap MoM vs MLE", 
+     main = "Mat do thuc te vs MoM vs MLE", 
      xlab = "RAM Usage", ylab = "Mat do",
      col = "lightgray", border = "white", ylim = c(0, 3))
 
@@ -226,11 +223,11 @@ legend("topright", legend = c("MoM", "MLE"),
        col = c("blue", "red"), lty = c(1, 2), lwd = 2)
 ```
 
-Đường mật độ của MoM và MLE gần như trùng khớp và mô tả tốt dữ liệu mẫu.
+Hai đường MoM với MLE gần như đè lên nhau, khớp tốt với dữ liệu.
 
-## 5. Khoảng tin cậy phi tham số cho Trung vị
+## Tìm khoảng tin cậy 99% cho trung vị
 
-Sử dụng phân phối nhị thức tìm vị trí thống kê thứ tự để lập khoảng tin cậy 99% cho trung vị:
+Dùng phân phối nhị thức tìm vị trí của thống kê thứ tự:
 
 ```{r}
 n_ram <- length(ram)
@@ -238,12 +235,12 @@ k <- qbinom(0.005, size = n_ram, prob = 0.5)
 r <- qbinom(0.995, size = n_ram, prob = 0.5) + 1
 
 ram_sort <- sort(ram)
-ci_med_l <- ram_sort[k]
-ci_med_r <- ram_sort[r]
+ci_l <- ram_sort[k]
+ci_r <- ram_sort[r]
 
-ci_med_l
-ci_med_r
+ci_l
+ci_r
 median(ram)
 ```
 
-Trung vị của mẫu nằm trong khoảng tin cậy 99% tìm được.
+Trung vị mẫu rơi trúng vào khoảng tin cậy 99%.
