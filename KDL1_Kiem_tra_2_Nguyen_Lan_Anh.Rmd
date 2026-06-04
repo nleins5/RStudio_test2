@@ -25,7 +25,7 @@ set.seed(123)
 
 ## 1. Khởi tạo và Làm sạch dữ liệu
 
-Sinh mẫu ngẫu nhiên 5000 quan sát từ phân phối chuẩn N(60, 15^2), sau đó giả lập lỗi bằng cách chèn 150 giá trị NA và 50 giá trị âm.
+Sinh ngẫu nhiên mẫu và chèn lỗi:
 
 ```{r bt1_khoi_tao}
 t_raw <- rnorm(5000, mean = 60, sd = 15)
@@ -38,7 +38,7 @@ neg_pos <- sample(safe_pos, 50)
 t_raw[neg_pos] <- runif(50, -30, -1)
 ```
 
-Lọc bỏ NA và số âm để làm sạch dữ liệu:
+Làm sạch dữ liệu:
 
 ```{r bt1_lam_sach}
 t_clean <- t_raw[!is.na(t_raw) & t_raw >= 0]
@@ -47,11 +47,11 @@ n_clean <- nrow(df1)
 n_clean
 ```
 
-Số lượng mẫu giảm từ 5000 xuống còn `r n_clean` quan sát sạch.
+
 
 ## 2. Khám phá phân phối
 
-Tính trung bình và độ lệch chuẩn của dữ liệu sạch:
+Tính trung bình, SD và vẽ phân phối:
 
 ```{r bt1_phan_phoi, fig.width=8, fig.height=5}
 mean_t <- mean(df1$Time)
@@ -76,22 +76,22 @@ curve(dnorm(x, mean = mean_t, sd = sd_t),
 )
 ```
 
-Đường mật độ chuẩn khớp rất tốt với hình dáng histogram thực tế của dữ liệu.
+
 
 ## 3. Ứng dụng hàm xác suất
 
-Xác suất sinh viên hoàn thành bài thi sớm hơn 45 phút:
+Tính xác suất hoàn thành sớm hơn 45 phút:
 
 ```{r bt1_pnorm}
 prob <- pnorm(45, mean = mean_t, sd = sd_t)
 prob
 ```
 
-Xác suất nộp bài dưới 45 phút là tầm `r round(prob * 100, 2)`%.
+
 
 ## 4. Hàm phân vị
 
-Mốc thời gian để lọt vào top 5% sinh viên làm bài nhanh nhất:
+Mốc thời gian cho top 5% làm nhanh nhất:
 
 ```{r bt1_qnorm}
 cutoff <- qnorm(0.05, mean = mean_t, sd = sd_t)
@@ -104,7 +104,7 @@ cutoff
 
 ## 1. Viết hàm tổng quát
 
-Hàm mô phỏng CLT chạy `R` lần, mỗi lần rút ra `n` quan sát từ phân phối mũ Exp(lambda) và tính trung bình mẫu:
+Hàm mô phỏng CLT cho phân phối mũ:
 
 ```{r bt2_ham}
 clt <- function(n, lambda, R = 5000) {
@@ -118,7 +118,7 @@ clt <- function(n, lambda, R = 5000) {
 
 ## 2. Kiểm chứng hội tụ
 
-Với n = 40, lambda = 0.2. Kỳ vọng lý thuyết là 5, phương sai lý thuyết là 0.625 (độ lệch chuẩn là căn của 0.625).
+Mô phỏng với n = 40, lambda = 0.2:
 
 ```{r bt2_clt, fig.width=8, fig.height=5}
 n_val <- 40
@@ -146,11 +146,11 @@ curve(dnorm(x, mean = mu_lt, sd = sd_lt),
 )
 ```
 
-Histogram biểu diễn trung bình mẫu khớp rất đẹp với đường cong chuẩn lý thuyết.
+
 
 ## 3. Khoảng tin cậy cho phương sai
 
-Rút 1 mẫu ngẫu nhiên gồm 30 quan sát từ phân phối mũ để lập khoảng tin cậy 95%:
+Khoảng tin cậy 95% cho phương sai:
 
 ```{r bt2_ci_var}
 mau_exp <- rexp(30, rate = lam)
@@ -199,7 +199,7 @@ legend("topright",
 )
 ```
 
-Phương sai thực (25) nằm gọn trong khoảng tin cậy tìm được.
+
 
 ---
 
@@ -228,7 +228,7 @@ c(a_mom, b_mom)
 
 ## 3. Ước lượng Hợp lý Cực đại (MLE)
 
-Hàm tính trừ log-likelihood:
+Hàm trừ log-likelihood:
 
 ```{r bt3_mle}
 nll_func <- function(params, data) {
@@ -284,7 +284,7 @@ legend("topright",
 )
 ```
 
-Hai đường mật độ MoM và MLE khớp sát nhau và đè khít lên phân phối thực nghiệm.
+
 
 ## 5. Khoảng tin cậy phi tham số cho Trung vị
 
